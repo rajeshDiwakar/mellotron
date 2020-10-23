@@ -67,6 +67,7 @@ class TextMelLoader(torch.utils.data.Dataset):
         text = self.get_text(text)
         mel, f0 = self.get_mel_and_f0(audiopath)
         speaker_id = self.get_speaker_id(speaker)
+        print(text,mel,speaker_id,f0)
         return (text, mel, speaker_id, f0)
 
     def get_speaker_id(self, speaker_id):
