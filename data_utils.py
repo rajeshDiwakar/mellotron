@@ -67,7 +67,7 @@ class TextMelLoader(torch.utils.data.Dataset):
         text = self.get_text(text)
         mel, f0 = self.get_mel_and_f0(audiopath)
         speaker_id = self.get_speaker_id(speaker)
-        print(text,mel,speaker_id,f0)
+        #print(text,mel,speaker_id,f0)
         return (text, mel, speaker_id, f0)
 
     def get_speaker_id(self, speaker_id):
@@ -79,6 +79,7 @@ class TextMelLoader(torch.utils.data.Dataset):
             raise ValueError("{} SR doesn't match target {} SR".format(
                 sampling_rate, self.stft.sampling_rate))
         audio_norm = audio / self.max_wav_value
+        print('min value',torch.min(audio_norm.data))
         audio_norm = audio_norm.unsqueeze(0)
         melspec = self.stft.mel_spectrogram(audio_norm)
         melspec = torch.squeeze(melspec, 0)
