@@ -15,6 +15,122 @@ from data_utils import TextMelLoader, TextMelCollate
 from loss_function import Tacotron2Loss
 from logger import Tacotron2Logger
 from hparams import create_hparams
+import glob
+
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
+
+if not os.path.isfile('mycreds.txt'):
+    with open('mycreds.txt','w') as f:
+        f.write('{"access_token": "ya29.a0AfH6SMC_aOt4BLq-OQ1oN4txyT5Guk9KMeEzqYJDjo4AkqD0fMJnIdQm4TGz3PQit8qNa-QEg3hdg66ic2pLErifxwsEhgPP-MIa947Ayigh8c5czN64T9IxCyLkR2M-5ygdjOhV5OzuXw-O6LfBJG9vBwMkyg9OKL0", "client_id": "883051571054-2e0bv2mjqra6i3cd6c915hkjgtdutct0.apps.googleusercontent.com", "client_secret": "NmzemQWSeUm_WWTbmUJi5xt7", "refresh_token": "1//0gE7zkyCPJ4RpCgYIARAAGBASNwF-L9IrISJx8AG8doLKF1C8RMbuvkqS6BsxGXaYJfqlB-RbrtmIESmVIA2krp-rK-Ylm26klmU", "token_expiry": "2020-07-29T16:47:41Z", "token_uri": "https://oauth2.googleapis.com/token", "user_agent": null, "revoke_uri": "https://oauth2.googleapis.com/revoke", "id_token": null, "id_token_jwt": null, "token_response": {"access_token": "ya29.a0AfH6SMC_aOt4BLq-OQ1oN4txyT5Guk9KMeEzqYJDjo4AkqD0fMJnIdQm4TGz3PQit8qNa-QEg3hdg66ic2pLErifxwsEhgPP-MIa947Ayigh8c5czN64T9IxCyLkR2M-5ygdjOhV5OzuXw-O6LfBJG9vBwMkyg9OKL0", "expires_in": 3599, "refresh_token": "1//0gE7zkyCPJ4RpCgYIARAAGBASNwF-L9IrISJx8AG8doLKF1C8RMbuvkqS6BsxGXaYJfqlB-RbrtmIESmVIA2krp-rK-Ylm26klmU", "scope": "https://www.googleapis.com/auth/drive", "token_type": "Bearer"}, "scopes": ["https://www.googleapis.com/auth/drive"], "token_info_uri": "https://oauth2.googleapis.com/tokeninfo", "invalid": false, "_class": "OAuth2Credentials", "_module": "oauth2client.client"}')
+
+        # {"access_token": "ya29.a0AfH6SMCDGn8XAOVlzeT47aIMf7QlauIfWz3G9fXrRTyX0JgSllcpHrAIuj6s6zqNTI0kK46c4LmVQp2svHpCSltdQrSgLo-74UtFWv4mdUX0Rnt5TxM7I_OaewjmLl6vH8wmrk1bccDAWBY_-vTeBI-eEedfSNRQu4Mc", "client_id": "883051571054-2e0bv2mjqra6i3cd6c915hkjgtdutct0.apps.googleusercontent.com", "client_secret": "NmzemQWSeUm_WWTbmUJi5xt7", "refresh_token": "1//0gE7zkyCPJ4RpCgYIARAAGBASNwF-L9IrISJx8AG8doLKF1C8RMbuvkqS6BsxGXaYJfqlB-RbrtmIESmVIA2krp-rK-Ylm26klmU", "token_expiry": "2020-08-09T09:46:00Z", "token_uri": "https://oauth2.googleapis.com/token", "user_agent": null, "revoke_uri": "https://oauth2.googleapis.com/revoke", "id_token": null, "id_token_jwt": null, "token_response": {"access_token": "ya29.a0AfH6SMCDGn8XAOVlzeT47aIMf7QlauIfWz3G9fXrRTyX0JgSllcpHrAIuj6s6zqNTI0kK46c4LmVQp2svHpCSltdQrSgLo-74UtFWv4mdUX0Rnt5TxM7I_OaewjmLl6vH8wmrk1bccDAWBY_-vTeBI-eEedfSNRQu4Mc", "expires_in": 3599, "scope": "https://www.googleapis.com/auth/drive", "token_type": "Bearer"}, "scopes": ["https://www.googleapis.com/auth/drive"], "token_info_uri": "https://oauth2.googleapis.com/tokeninfo", "invalid": false, "_class": "OAuth2Credentials", "_module": "oauth2client.client"}
+
+
+gauth = GoogleAuth()
+# Try to load saved client credentials
+gauth.LoadCredentialsFile("mycreds.txt")
+# if gauth.credentials is None:
+#     # Authenticate if they're not there
+#     gauth.LocalWebserverAuth()
+if gauth.access_token_expired:
+    # Refresh them if expired
+    gauth.Refresh()
+else:
+    # Initialize the saved creds
+    gauth.Authorize()
+# Save the current credentials to a file
+gauth.SaveCredentialsFile("mycreds.txt")
+
+# drive = GoogleDrive(gauth)
+
+def authorize_drive():
+    # global drive
+    global gauth
+    # Try to load saved client credentials
+    gauth.LoadCredentialsFile("mycreds.txt")
+    # if gauth.credentials is None:
+    #     # Authenticate if they're not there
+    #     gauth.LocalWebserverAuth()
+    if gauth.access_token_expired:
+        # Refresh them if expired
+        gauth.Refresh()
+    else:
+        # Initialize the saved creds
+        gauth.Authorize()
+    # Save the current credentials to a file
+    gauth.SaveCredentialsFile("mycreds.txt")
+
+    drive = GoogleDrive(gauth)
+
+    return drive
+
+
+# def validate_parent_id(parent_id):
+#     global drive
+#     file_list = drive.ListFile({'q': f"title='{folder_name}' and trashed=false and mimeType='application/vnd.google-apps.folder'"}).GetList()
+#         if len(file_list) > 1:
+#             raise ValueError('There are multiple folders with that specified folder name')
+#         elif len(file_list) == 0:
+#             raise ValueError('No folders match that specified folder name')
+
+
+def upload_to_drive(list_files,parent_id):
+    # global drive
+    drive = authorize_drive()
+    # parent_id = ''# parent id
+    drive_files = drive.ListFile({'q': "'%s' in parents and trashed=false"%parent_id}).GetList()
+    drive_files = {f['title']:f for f in drive_files}
+    for path in list_files:
+        if not os.path.isfile(path): continue
+        d,f = os.path.split(path)
+        # check if file already exists and trash it
+        if f in drive_files:
+                drive_files[f].Trash()
+
+        file = drive.CreateFile({'title': f, 'parents': [{'id': parent_id}]})
+        file.SetContentFile(path)
+        file.Upload()
+
+def download_checkpoints(parent_id,root_dir='logs-tacotron'):
+    drive = authorize_drive()
+    downloaded_files = []
+    os.makedirs(root_dir,exist_ok=True)
+    # checkpoint = ''
+    # file_list = drive.ListFile({'q': "title contains 'My Awesome File' and trashed=false"}).GetList()
+    ckpt_path = os.path.join(root_dir,'checkpoint')
+    file_list = drive.ListFile({'q': "'%s' in parents and trashed=false"%parent_id}).GetList()  #check if it is iterator
+    # print(file_list)
+    for f in file_list:
+        if f['title'].lower() == 'checkpoint':
+            file_id = f['id']
+            file = drive.CreateFile({'id': file_id})
+            file.GetContentFile(ckpt_path)
+            downloaded_files.append(ckpt_path)
+        elif 0 and f['title'].startswith('events'):
+            file_id = f['id']
+            file = drive.CreateFile({'id': file_id})
+            file.GetContentFile(os.path.join(root_dir,f['title']))
+            downloaded_files.append(os.path.join(root_dir,f['title']))
+
+    if os.path.isfile(ckpt_path):
+        with open(ckpt_path) as f:
+            ckpt_data = f.read().split('\n')
+        if len(ckpt_data):
+            ckpt_data = ckpt_data[0].split(':')[-1].strip().strip('" ')
+            weight_name = os.path.basename(ckpt_data)
+            for f in file_list:
+                if f['title'].startswith(weight_name):
+                    file_id = f['id']
+                    file = drive.CreateFile({'id': file_id})
+                    file.GetContentFile(os.path.join(root_dir,f['title']))
+                    downloaded_files.append(os.path.join(root_dir,f['title']))
+    else:
+        log('checkpoint file not found in drive')
+
+    print('Downloaded following files\n%s'%'\n'.join(downloaded_files))
+
+
 
 
 def reduce_tensor(tensor, n_gpus):
@@ -137,7 +253,7 @@ def validate(model, criterion, valset, iteration, batch_size, n_gpus,
 
 
 def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
-          rank, group_name, hparams):
+          rank, group_name, hparams,args):
     """Training and validation logging results to tensorboard and stdout
 
     Params
@@ -149,6 +265,7 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
     rank (int): rank of current gpu
     hparams (object): comma separated list of "name=value" pairs.
     """
+    tstart = time.time()
     if hparams.distributed_run:
         init_distributed(hparams, n_gpus, rank, group_name)
 
@@ -192,9 +309,25 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
 
     model.train()
     is_overflow = False
+    unsaved_data=False
     # ================ MAIN TRAINNIG LOOP! ===================
     for epoch in range(epoch_offset, hparams.epochs):
+        if args.max_duration and time.time()-tstart>args.max_duration:
+            if unsaved_data:
+                checkpoint_path = os.path.join(
+                    output_directory, "checkpoint_{}".format(iteration))
+                save_checkpoint(model, optimizer, learning_rate, iteration,
+                                checkpoint_path)
+                unsaved_data = False
+                if args.pid:
+                    try:
+                        log_files = glob.glob(os.path.join(output_directory,log_directory,'*'))
+                        upload_to_drive([checkpoint_path]+log_files,args.pid)
+                    except Exception as e:
+                        print('error while uploading to drive\n%s'%str(e))
+            break
         print("Epoch: {}".format(epoch))
+        unsaved_data = True
         if train_sampler is not None:
             train_sampler.set_epoch(epoch)
         for i, batch in enumerate(train_loader):
@@ -247,6 +380,13 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
                         output_directory, "checkpoint_{}".format(iteration))
                     save_checkpoint(model, optimizer, learning_rate, iteration,
                                     checkpoint_path)
+                    unsaved_data = False
+                    if args.pid:
+                        try:
+                            log_files = glob.glob(os.path.join(output_directory,log_directory,'*'))
+                            upload_to_drive([checkpoint_path]+log_files,args.pid)
+                        except Exception as e:
+                            print('error while uploading to drive\n%s'%str(e))
 
             iteration += 1
 
@@ -269,7 +409,9 @@ if __name__ == '__main__':
                         required=False, help='Distributed group name')
     parser.add_argument('--hparams', type=str,
                         required=False, help='comma separated name=value pairs')
-
+    parser.add_argument('--pid', type=str,
+                        required=False, help='drive folder parent id')
+    parser.add_argument('--max_duration',default=0,type=int,help='max duration for application in seconds')
     args = parser.parse_args()
     hparams = create_hparams(args.hparams)
 
@@ -283,4 +425,4 @@ if __name__ == '__main__':
     print("cuDNN Benchmark:", hparams.cudnn_benchmark)
 
     train(args.output_directory, args.log_directory, args.checkpoint_path,
-          args.warm_start, args.n_gpus, args.rank, args.group_name, hparams)
+          args.warm_start, args.n_gpus, args.rank, args.group_name, hparams,args)
