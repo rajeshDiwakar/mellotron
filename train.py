@@ -92,43 +92,42 @@ def upload_to_drive(list_files,parent_id):
         file.SetContentFile(path)
         file.Upload()
 
-def download_checkpoints(parent_id,root_dir='logs-tacotron'):
+def download_checkpoints(parent_id,checkpoint,root_dir='outdir'):
     drive = authorize_drive()
     downloaded_files = []
     os.makedirs(root_dir,exist_ok=True)
     # checkpoint = ''
     # file_list = drive.ListFile({'q': "title contains 'My Awesome File' and trashed=false"}).GetList()
-    ckpt_path = os.path.join(root_dir,'checkpoint')
+    ckpt_path = os.path.join(root_dir,checkpoint)
     file_list = drive.ListFile({'q': "'%s' in parents and trashed=false"%parent_id}).GetList()  #check if it is iterator
     # print(file_list)
     for f in file_list:
-        if f['title'].lower() == 'checkpoint':
+        if f['title'].lower() == checkpoint:
             file_id = f['id']
             file = drive.CreateFile({'id': file_id})
             file.GetContentFile(ckpt_path)
             downloaded_files.append(ckpt_path)
-        elif 0 and f['title'].startswith('events'):
-            file_id = f['id']
-            file = drive.CreateFile({'id': file_id})
-            file.GetContentFile(os.path.join(root_dir,f['title']))
-            downloaded_files.append(os.path.join(root_dir,f['title']))
+#
 
     if os.path.isfile(ckpt_path):
-        with open(ckpt_path) as f:
-            ckpt_data = f.read().split('\n')
-        if len(ckpt_data):
-            ckpt_data = ckpt_data[0].split(':')[-1].strip().strip('" ')
-            weight_name = os.path.basename(ckpt_data)
-            for f in file_list:
-                if f['title'].startswith(weight_name):
-                    file_id = f['id']
-                    file = drive.CreateFile({'id': file_id})
-                    file.GetContentFile(os.path.join(root_dir,f['title']))
-                    downloaded_files.append(os.path.join(root_dir,f['title']))
+        # with open(ckpt_path) as f:
+        #     ckpt_data = f.read().split('\n')
+        # if len(ckpt_data):
+        #     ckpt_data = ckpt_data[0].split(':')[-1].strip().strip('" ')
+        #     weight_name = os.path.basename(ckpt_data)
+        #     for f in file_list:
+        #         if f['title'].startswith(weight_name):
+        #             file_id = f['id']
+        #             file = drive.CreateFile({'id': file_id})
+        #             file.GetContentFile(os.path.join(root_dir,f['title']))
+        #             downloaded_files.append(os.path.join(root_dir,f['title']))
+        pass
     else:
         log('checkpoint file not found in drive')
 
     print('Downloaded following files\n%s'%'\n'.join(downloaded_files))
+
+    return ckpt_path
 
 
 
@@ -203,6 +202,7 @@ def warm_start_model(checkpoint_path, model, ignore_layers):
 
 
 def load_checkpoint(checkpoint_path, model, optimizer):
+
     assert os.path.isfile(checkpoint_path)
     print("Loading checkpoint '{}'".format(checkpoint_path))
     checkpoint_dict = torch.load(checkpoint_path, map_location='cpu')
@@ -300,6 +300,9 @@ def train(output_directory, log_directory, checkpoint_path, warm_start, n_gpus,
             model = warm_start_model(
                 checkpoint_path, model, hparams.ignore_layers)
         else:
+            if checkpoint_path.startswith('pid'):
+                checkpoint = os.path.basename(checkpoint_path)
+                checkpoint_path = download_checkpoints(args.pid,checkpoint,output_directory)
             model, optimizer, _learning_rate, iteration = load_checkpoint(
                 checkpoint_path, model, optimizer)
             if hparams.use_saved_learning_rate:
